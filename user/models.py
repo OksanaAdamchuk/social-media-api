@@ -1,6 +1,9 @@
+import os
+import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext as _
+from django.utils.text import slugify
 
 
 class UserManager(BaseUserManager):
@@ -39,3 +42,32 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UserManager()
+
+
+def profile_image_file_path(instance, filename) -> str:
+    _, ext = os.path.splitext(filename)
+    filename = f"{slugify(instance.user.first_name)}-{slugify(instance.user.last_name)}-{uuid.uuid4()}{ext}"
+
+    return os.path.join("uploads", "profile-images", filename)
+
+
+class Profile(models.Model):
+    class Gender(models.TextChoices):
+        FEMALE = "female"
+        MALE = "male"
+        OTHER = "other"
+
+    gender = models.CharField(
+        max_length=6,
+        choices=Gender.choices
+    )
+    info = models.TextField()
+    image = models.ImageField(null=True, upload_to=profile_image_file_path)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    follows = models.ManyToManyField(
+        "self",
+        related_name="followed_by",
+        symmetrical=False,
+        blank=True
+    )
+    
